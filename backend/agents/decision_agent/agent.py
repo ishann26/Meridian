@@ -1,70 +1,193 @@
-import os
+"""
+Decision Agent — Hugging Face Inference Backend
+
+Uses Qwen2.5-72B-Instruct via the HuggingFace Hub InferenceClient.
+Falls back to deterministic rule-based logic on any failure.
+"""
+
 import json
 import logging
-import google.generativeai as genai
-from typing import Dict, Any
+import os
+import re
+import time
+from typing import Any, Dict
+from huggingface_hub import InferenceClient
+from huggingface_hub.errors import HfHubHTTPError
 from dotenv import load_dotenv
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """
-You are an advanced logistics Decision Agent for a real-time shipment routing system.
+# ── Config ───────────────────────────────────────────────────
+HF_MODEL = "Qwen/Qwen2.5-72B-Instruct"
+HF_API_KEY = os.environ.get("HF_API_KEY", "")
 
-Your role is to evaluate incoming trip data and produce a precise, actionable decision.
+_REQUEST_TIMEOUT = 30       # seconds
+_MAX_NEW_TOKENS  = 512
 
-Input Fields:
-- delayRisk: A float between 0 and 1 (higher = greater chance of delay)
-- predictionScore: A float between 0 and 1 (model confidence in the prediction)
-- routeOptions: A list of candidate routes with their estimated time and cost
-- optimizedSolution: The route suggested by the route optimizer (A* / OR-Tools)
-- constraints: Business or operational constraints (vehicle capacity, time windows, etc.)
 
-Your task:
-1. Evaluate the delay risk — if >= 0.7, strongly consider rerouting.
-2. Compare all route options against the optimizedSolution on time and cost.
-3. Verify the optimizedSolution satisfies all given constraints.
-4. Choose the single best action from: PROCEED, REROUTE, HOLD, ESCALATE.
-5. Choose the best route by its 0-based index from the routeOptions list.
-6. Estimate how many minutes would be saved versus the baseline (index 0) route.
-7. Generate a brief, human-readable alert message for the driver/dispatcher.
+# ── Prompt Builder ───────────────────────────────────────────
 
-Respond ONLY with a valid JSON object:
-{
-  "bestAction": "<PROCEED | REROUTE | HOLD | ESCALATE>",
-  "chosenRouteIndex": <integer>,
-  "reasoning": "<concise explanation, max 3 sentences>",
-  "confidence": <float 0.0–1.0>,
-  "expectedImprovementMinutes": <integer>,
-  "alertMessage": "<driver/dispatcher-facing message, max 20 words>"
-}
-"""
+def _build_prompt(trip_data: Dict[str, Any]) -> str:
+    """
+    Construct a system prompt that asks the model to evaluate
+    the shipment and return a strict JSON decision object.
+    """
+    delay_risk        = trip_data.get("delayRisk", 0.0)
+    route_options     = trip_data.get("routeOptions", [])
+    optimized         = trip_data.get("optimizedSolution", {})
+    constraints       = trip_data.get("constraints", {})
+
+    context = json.dumps({
+        "delayRisk":        delay_risk,
+        "routeOptions":     route_options,
+        "optimizedSolution": optimized,
+        "constraints":      constraints,
+    }, indent=2)
+
+    return (
+        "You are an expert logistics decision engine. "
+        "Analyse the shipment data below and return ONLY a valid JSON object — no explanation, "
+        "no markdown, no extra text.\n\n"
+        "Rules:\n"
+        "1. If delayRisk >= 0.7 → strongly favour 'reroute'.\n"
+        "2. If delayRisk < 0.3  → strongly favour 'proceed'.\n"
+        "3. Otherwise           → consider route options and constraints before choosing 'wait'.\n"
+        "4. Compare every route option against optimizedSolution (time + cost).\n"
+        "5. Verify all constraints are satisfied by your chosen action.\n\n"
+        "Required output format (JSON only, no other text):\n"
+        "{\n"
+        '  "bestAction": "reroute" | "wait" | "proceed",\n'
+        '  "reasoning":  "<one concise sentence>",\n'
+        '  "confidence": <float 0.0–1.0>\n'
+        "}\n\n"
+        f"Shipment Data:\n{context}"
+    )
+
+
+# ── Response Parser ──────────────────────────────────────────
+
+def _parse_response(raw_text: str) -> Dict[str, Any]:
+    """
+    Robustly extract the JSON decision from the model's raw output.
+    """
+    text = raw_text.strip()
+
+    # Strategy 1 — extract first {...} block via regex
+    match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    # Strategy 2 — direct parse
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Strategy 3 — manual field extraction
+    logger.warning("JSON parse failed; attempting manual key extraction.")
+    action_match = re.search(r'"bestAction"\s*:\s*"(reroute|wait|proceed)"', text, re.IGNORECASE)
+    reason_match = re.search(r'"reasoning"\s*:\s*"([^"]+)"', text)
+    conf_match   = re.search(r'"confidence"\s*:\s*([0-9.]+)', text)
+
+    if action_match:
+        return {
+            "bestAction":  action_match.group(1).lower(),
+            "reasoning":   reason_match.group(1) if reason_match else "Extracted from partial response.",
+            "confidence":  float(conf_match.group(1)) if conf_match else 0.5,
+        }
+
+    raise ValueError(f"Could not extract a valid decision from model output:\n{raw_text[:500]}")
+
+
+# ── Rule-Based Fallback ──────────────────────────────────────
+
+def _rule_based_decision(trip_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Simple deterministic fallback when the HF API is unavailable.
+    """
+    delay_risk = float(trip_data.get("delayRisk", 0.0))
+
+    if delay_risk > 0.7:
+        action, reasoning, confidence = (
+            "reroute",
+            f"Delay risk {delay_risk:.2f} exceeds threshold (0.7); rerouting recommended.",
+            round(delay_risk, 2),
+        )
+    elif delay_risk < 0.3:
+        action, reasoning, confidence = (
+            "proceed",
+            f"Delay risk {delay_risk:.2f} is low (< 0.3); proceed as planned.",
+            round(1.0 - delay_risk, 2),
+        )
+    else:
+        action, reasoning, confidence = (
+            "wait",
+            f"Delay risk {delay_risk:.2f} is moderate; hold and monitor conditions.",
+            0.5,
+        )
+
+    logger.info("[decision_agent/fallback] action=%s confidence=%.2f", action, confidence)
+    return {"bestAction": action, "reasoning": reasoning, "confidence": confidence}
+
+
+# ── Public Interface ─────────────────────────────────────────
 
 def get_decision(trip_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Calls Gemini API to get a routing decision based on trip data.
+    Query Qwen2.5-72B-Instruct via HuggingFace Inference API for a routing decision.
+
+    Args:
+        trip_data: Dict containing delayRisk, routeOptions, optimizedSolution, constraints.
+
+    Returns:
+        Dict with bestAction, reasoning, confidence.
     """
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY environment variable not set.")
-    
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash") # Using 1.5 flash as 2.5 flash-lite isn't standard yet
-    
-    prompt = f"{SYSTEM_PROMPT}\n\nTrip Data:\n{json.dumps(trip_data, indent=2)}"
-    
+    if not HF_API_KEY:
+        logger.warning("[decision_agent] HF_API_KEY not set. Using rule-based fallback.")
+        return _rule_based_decision(trip_data)
+
+    client = InferenceClient(api_key=HF_API_KEY)
+    prompt = _build_prompt(trip_data)
+
     try:
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.2,
-                response_mime_type="application/json",
-            )
+        logger.info("[decision_agent] Calling HuggingFace API — model=%s", HF_MODEL)
+        t0 = time.perf_counter()
+
+        response = client.chat.completions.create(
+            model=HF_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=_MAX_NEW_TOKENS,
+            temperature=0.2,
+            top_p=0.9
         )
-        
-        result = json.loads(response.text.strip())
+
+        elapsed = time.perf_counter() - t0
+        logger.info("[decision_agent] HF API responded in %.2fs", elapsed)
+
+        raw_text = response.choices[0].message.content
+        result = _parse_response(raw_text)
+
+        # Normalise action to lowercase
+        result["bestAction"] = str(result.get("bestAction", "proceed")).lower()
+        result["confidence"] = float(result.get("confidence", 0.5))
+        result["reasoning"]  = str(result.get("reasoning", ""))
+
+        logger.info(
+            "[decision_agent] HF decision: action=%s  confidence=%.2f",
+            result["bestAction"], result["confidence"],
+        )
         return result
+
+    except HfHubHTTPError as e:
+        logger.error("[decision_agent] HF API HTTP error: %s. Using fallback.", e)
+    except ValueError as e:
+        logger.error("[decision_agent] Response parse error: %s. Using fallback.", e)
     except Exception as e:
-        logger.error(f"Error calling Gemini: {e}")
-        raise
+        logger.error("[decision_agent] Unexpected error: %s. Using fallback.", e)
+
+    return _rule_based_decision(trip_data)

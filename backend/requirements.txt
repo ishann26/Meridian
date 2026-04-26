@@ -1,7 +1,29 @@
-fastapi
-uvicorn
+# ── Core ──────────────────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
+
+# ── Env & Config ──────────────────────────────────────────────
+python-dotenv
+
+# ── Prediction Agent ──────────────────────────────────────────
 xgboost
 pandas
 scikit-learn
-pydantic
-python-dotenv
+numpy
+
+# ── Optimization Agent ────────────────────────────────────────
+ortools
+
+# ── Decision Agent ────────────────────────────────────────────
+google-generativeai
+
+# ── Execution Agent (HTTP bridge to Node.js service) ──────────
+httpx
+
+# ── Monitoring Agent ──────────────────────────────────────────
+# Full cloud deps — install only if running monitoring_agent/main.py standalone
+# google-cloud-bigquery
+# google-cloud-firestore
+# google-cloud-pubsub
+# aiohttp
