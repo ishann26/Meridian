@@ -1,0 +1,30 @@
+{
+  "origin": {"latitude": 40.7128, "longitude": -74.0060},
+  "stops": [
+    {
+      "id": "stop_1",
+      "name": "Warehouse A",
+      "location": {"latitude": 40.7306, "longitude": -73.9352},
+      "demand_kg": 500,
+      "time_window": [0, 120]
+    },
+    {
+      "id": "stop_2",
+      "name": "Store B",
+      "location": {"latitude": 40.6782, "longitude": -73.9442},
+      "demand_kg": 300,
+      "time_window": [60, 180]
+    },
+    {
+      "id": "stop_3",
+      "name": "Client C",
+      "location": {"latitude": 40.7282, "longitude": -73.7949},
+      "demand_kg": 200,
+      "time_window": [120, 240]
+    }
+  ],
+  "vehicle": {
+    "capacity_kg": 2000,
+    "max_driving_minutes": 480
+  }
+}
