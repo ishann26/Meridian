@@ -12,6 +12,7 @@ import 'package:meridian/features/command_center/widgets/route_map_card.dart';
 import 'package:meridian/features/command_center/widgets/risk_alert_card.dart';
 import 'package:meridian/features/command_center/widgets/ai_recommendation_card.dart';
 import 'package:meridian/shared/widgets/section_header.dart';
+import 'package:meridian/widgets/fleet_impact_forecaster.dart';
 
 /// Command Center — the main dashboard.
 ///
@@ -109,6 +110,11 @@ class _CommandCenterScreenState extends State<CommandCenterScreen> {
 
                     // ── Route map ───────────────────────────────
                     const RouteMapCard(),
+
+                    const SizedBox(height: AppTheme.spacingXl),
+
+                    // ── Fleet Impact Forecaster ─────────────────
+                    const FleetImpactForecaster(),
 
                     const SizedBox(height: AppTheme.spacingXl),
 

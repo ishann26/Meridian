@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:meridian/core/theme/app_colors.dart';
 import 'package:meridian/core/theme/app_theme.dart';
 import 'package:meridian/data/models/shipment.dart';
+import 'package:meridian/widgets/risk_badge.dart';
 
 /// Premium rounded card for a single shipment.
 ///
@@ -39,6 +40,12 @@ class ShipmentCard extends StatelessWidget {
       default:
         return AppColors.accentMintDark;
     }
+  }
+
+  double get _delayProbability {
+    if (_riskLabel == 'HIGH') return 0.85;
+    if (_riskLabel == 'MEDIUM') return 0.45;
+    return 0.10;
   }
 
   Color get _statusColor {
@@ -140,23 +147,10 @@ class ShipmentCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 // Risk badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7, vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _riskColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _riskLabel,
-                    style: GoogleFonts.inter(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: _riskColor,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                RiskBadge(
+                  delayProbability: _delayProbability,
+                  riskLevel: _riskLabel,
+                  predictedDelayHours: shipment.delayHours > 0 ? shipment.delayHours.toDouble() : null,
                 ),
               ],
             ),

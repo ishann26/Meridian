@@ -6,6 +6,7 @@ import 'package:meridian/core/theme/app_theme.dart';
 import 'package:meridian/data/models/shipment.dart';
 import 'package:meridian/data/repositories/shipment_repository.dart';
 import 'package:meridian/core/di/service_locator.dart';
+import 'package:meridian/widgets/risk_badge.dart';
 
 /// Full logistics decision view for a single shipment.
 ///
@@ -39,6 +40,13 @@ class _ShipmentDetailScreenState extends State<ShipmentDetailScreen> {
       return 'MEDIUM';
     }
     return 'LOW';
+  }
+
+  double _delayProbability(Shipment s) {
+    final label = _riskLabel(s);
+    if (label == 'HIGH') return 0.85;
+    if (label == 'MEDIUM') return 0.45;
+    return 0.10;
   }
 
   Color _riskColor(Shipment s) {
@@ -161,7 +169,11 @@ class _ShipmentDetailScreenState extends State<ShipmentDetailScreen> {
               const Spacer(),
               _pill(s.statusLabel, _statusColor(s)),
               const SizedBox(width: 6),
-              _pill(_riskLabel(s), _riskColor(s)),
+              RiskBadge(
+                delayProbability: _delayProbability(s),
+                riskLevel: _riskLabel(s),
+                predictedDelayHours: s.delayHours > 0 ? s.delayHours.toDouble() : null,
+              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -432,36 +444,14 @@ class _ShipmentDetailScreenState extends State<ShipmentDetailScreen> {
   }
 
   // ─────────────────────────────────────────────────────────
-  // 6. RECOMMENDATION CARD
+  // 6. AI PREDICTION CARD
   // ─────────────────────────────────────────────────────────
   Widget _recommendationCard(Shipment s) {
-    String action, reason, savings;
-    if (s.status == ShipmentStatus.delayed) {
-      action = 'Reroute via alternate port';
-      reason = '${s.destination} is experiencing congestion. Diverting to the '
-          'nearest alternate port avoids the ${s.delayHours}h queue and '
-          'reduces dwell-time surcharges.';
-      savings = 'Saves ~${(s.delayHours * 0.6).round()}h · '
-          'Avoids \$${(s.weightKg * 0.008).toStringAsFixed(0)} surcharge';
-    } else if (s.mode == TransportMode.sea) {
-      action = 'Switch last-mile to rail';
-      reason = 'Rail from the port to ${s.destination} is 18% cheaper '
-          'than road and reduces carbon by ~2.3 tons for this cargo weight.';
-      savings = 'Saves \$${(s.weightKg * 0.003).toStringAsFixed(0)} · '
-          '-2.3t CO₂';
-    } else {
-      action = 'Consolidate with nearby shipment';
-      reason = 'There is a compatible shipment on the same corridor. '
-          'Consolidating reduces per-unit cost by ~12% and improves '
-          'vehicle utilization.';
-      savings = 'Saves ~12% cost · Better utilization';
-    }
-
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppColors.panelDark,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
         boxShadow: AppTheme.elevatedShadow,
       ),
       child: Column(
@@ -479,54 +469,77 @@ class _ShipmentDetailScreenState extends State<ShipmentDetailScreen> {
                     size: 14, color: AppColors.accentMint),
               ),
               const SizedBox(width: 10),
-              Text('AI Recommendation',
+              Text('AI Prediction Agent',
                 style: GoogleFonts.inter(
                   fontSize: 12, fontWeight: FontWeight.w600,
                   color: AppColors.accentMint,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text(action,
-            style: GoogleFonts.inter(
-              fontSize: 15, fontWeight: FontWeight.w700,
-              color: AppColors.textOnDark,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(reason,
-            style: GoogleFonts.inter(
-              fontSize: 12, fontWeight: FontWeight.w400,
-              color: AppColors.textOnDarkMuted, height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.panelDarkAlt,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.trending_up_rounded,
-                    size: 12, color: AppColors.accentMint),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(savings,
-                    style: GoogleFonts.inter(
-                      fontSize: 11, fontWeight: FontWeight.w500,
-                      color: AppColors.textOnDarkMuted,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+          const SizedBox(height: 24),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              RiskBadge(
+                delayProbability: _delayProbability(s),
+                riskLevel: _riskLabel(s),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  '${(_delayProbability(s) * 100).round()}% Delay Probability',
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textOnDark,
+                    height: 1.2,
+                    letterSpacing: -0.5,
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'High risk due to port congestion (42%) + heavy rain forecast',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textOnDarkMuted,
+              height: 1.5,
             ),
           ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _featurePill('Port congestion (42%)'),
+              _featurePill('Heavy rain forecast (38%)'),
+              _featurePill('Carrier score (15%)'),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _featurePill(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.accentTan.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.panelDark,
+        ),
       ),
     );
   }
@@ -537,32 +550,54 @@ class _ShipmentDetailScreenState extends State<ShipmentDetailScreen> {
   Widget _actionButtons(Shipment s) {
     return Column(
       children: [
-        // Primary: Run Simulation
+        // 1. Accept & Reroute (Big Mint Pill)
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => context.go('/simulation'),
-            icon: const Icon(Icons.science_rounded, size: 18),
-            label: const Text('Run Simulation'),
+          child: ElevatedButton(
+            onPressed: () => _snack('Rerouting ${s.id} via alternate port...'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentMint,
+              foregroundColor: AppColors.panelDark,
+              elevation: 4,
+              shadowColor: AppColors.shadow,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+              ),
+            ),
+            child: Text(
+              'Accept & Reroute',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => _snack('Recommendation accepted for ${s.id}'),
-                child: const Text('Accept'),
+        const SizedBox(height: 12),
+        // 2. Run Simulation (Able to re-call /predict when sliders change)
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              // TODO: implement re-call to /predict when sliders change in simulation
+              context.go('/simulation');
+            },
+            icon: const Icon(Icons.science_rounded, size: 18),
+            label: const Text('Run Simulation'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              side: BorderSide(color: AppColors.panelDark.withValues(alpha: 0.1), width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+              ),
+              foregroundColor: AppColors.panelDark,
+              textStyle: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => _snack('Plan exported for ${s.id}'),
-                child: const Text('Export Plan'),
-              ),
-            ),
-          ],
+          ),
         ),
       ],
     );
