@@ -163,7 +163,7 @@ def map_request_to_features(req: PredictionRequest) -> pd.DataFrame:
         distance_hub = req.distance_to_next_hub_km
     else:
         lon = req.live_location.lon if req.live_location.lon is not None else req.live_location.lng
-        from backend.prediction_agent.feature_engineering import _nearest_hub_distance
+        from feature_engineering import _nearest_hub_distance
         distance_hub = _nearest_hub_distance(req.live_location.lat, lon or 0.0)
     
     # Build dict matching feature_names.json exactly

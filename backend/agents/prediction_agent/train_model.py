@@ -15,7 +15,7 @@ import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 
-from backend.prediction_agent.feature_engineering import load_dataco_data, engineer_features
+from feature_engineering import load_dataco_data, engineer_features
 
 # ── Paths ────────────────────────────────────────────────────
 MODELS_DIR = Path(__file__).resolve().parent / "models"
