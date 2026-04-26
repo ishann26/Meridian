@@ -1,9 +1,0 @@
-# Routing Agent — Free Local Stack
-# Install with:  pip install -r requirements.txt
-
-fastapi==0.115.6        # Web framework
-uvicorn==0.32.1         # Web server to run FastAPI
-requests==2.32.3        # HTTP client for OSRM API calls
-python-dotenv==1.0.1    # Load .env file
-pydantic==2.10.3        # Data validation (used by FastAPI)
-polyline==2.0.2         # Decode encoded polyline geometry (optional but useful)
