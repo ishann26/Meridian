@@ -38,12 +38,6 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 # ── Constants ────────────────────────────────────────────────
-_LOCAL_PATH = Path(__file__).resolve().parent / "data" / "DataCoSupplyChainDataset.csv"
-_FALLBACK_URL = (
-    "https://raw.githubusercontent.com/ashishpatel26/DataCo-SMART-SUPPLY-"
-    "CHAIN-FOR-BIG-DATA-ANALYSIS/main/DataCoSupplyChainDataset.csv"
-)
-
 # USD → INR conversion (fixed for reproducibility)
 _USD_TO_INR: float = 83.5
 
@@ -112,41 +106,10 @@ _REGION_WEATHER_BASE: dict[str, float] = {
 # DATA LOADING
 # ─────────────────────────────────────────────────────────────
 
-def load_dataco_data() -> pd.DataFrame:
-    """Load the DataCo Supply Chain dataset.
-
-    Tries the local file first; falls back to the public GitHub
-    URL if the file is not found on disk.
-
-    Returns
-    -------
-    pd.DataFrame
-        Raw dataset with all 53 original columns.
-
-    Raises
-    ------
-    RuntimeError
-        If the dataset cannot be loaded from either source.
-    """
-    if _LOCAL_PATH.exists():
-        print(f"[load_dataco_data] Loading from local path: {_LOCAL_PATH}")
-        try:
-            df = pd.read_csv(_LOCAL_PATH, encoding="latin-1", low_memory=False)
-            print(f"  → {len(df):,} rows loaded from disk.")
-            return df
-        except Exception as exc:
-            print(f"  ! Local load failed ({exc}), trying URL …")
-
-    print(f"[load_dataco_data] Fetching from URL:\n  {_FALLBACK_URL}")
-    try:
-        df = pd.read_csv(_FALLBACK_URL, encoding="latin-1", low_memory=False)
-        print(f"  → {len(df):,} rows loaded from URL.")
-        return df
-    except Exception as exc:
-        raise RuntimeError(
-            f"Could not load DataCo dataset from disk or URL. "
-            f"Reason: {exc}"
-        ) from exc
+def load_dataco_data():
+    """Load DataCo dataset directly from raw URL (no local file)."""
+    url = "https://raw.githubusercontent.com/ashishpatel26/DataCo-SMART-SUPPLY-CHAIN-FOR-BIG-DATA-ANALYSIS/main/DataCoSupplyChainDataset.csv"
+    return pd.read_csv(url)
 
 
 # ─────────────────────────────────────────────────────────────
