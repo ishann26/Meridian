@@ -6,7 +6,7 @@ import 'package:meridian/main.dart';
 
 void main() {
   testWidgets('App renders without crashing', (WidgetTester tester) async {
-    await tester.pumpWidget(const SmartLogiChainApp());
+    await tester.pumpWidget(const MeridianApp());
     await tester.pumpAndSettle();
 
     // Verify the bottom nav renders with all 5 tabs.

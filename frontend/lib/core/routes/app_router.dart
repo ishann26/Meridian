@@ -2,15 +2,17 @@ import 'package:go_router/go_router.dart';
 
 import 'package:meridian/features/command_center/command_center_screen.dart';
 import 'package:meridian/features/shipments/shipments_screen.dart';
+import 'package:meridian/features/shipments/shipment_detail_screen.dart';
 import 'package:meridian/features/ai_copilot/ai_copilot_screen.dart';
 import 'package:meridian/features/simulation/simulation_screen.dart';
 import 'package:meridian/features/impact/impact_screen.dart';
 import 'package:meridian/shared/widgets/slc_shell.dart';
 
-/// All named route paths used in SmartLogiChain.
+/// All named route paths used in Meridian.
 abstract class AppRoutes {
   static const String commandCenter = '/';
   static const String shipments = '/shipments';
+  static const String shipmentDetail = '/shipments/:id';
   static const String aiCopilot = '/ai-copilot';
   static const String simulation = '/simulation';
   static const String impact = '/impact';
@@ -46,6 +48,15 @@ final GoRouter appRouter = GoRouter(
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: ShipmentsScreen(),
               ),
+              routes: [
+                GoRoute(
+                  path: ':id',
+                  builder: (context, state) {
+                    final id = state.pathParameters['id']!;
+                    return ShipmentDetailScreen(shipmentId: id);
+                  },
+                ),
+              ],
             ),
           ],
         ),

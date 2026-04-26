@@ -1,0 +1,14 @@
+[
+  "historical_route_delay_rate",
+  "weather_score",
+  "congestion_index",
+  "route_deviation_meters",
+  "time_of_day_bin",
+  "day_of_week",
+  "monsoon_flag",
+  "cargo_weight_kg",
+  "cargo_value_inr",
+  "cargo_type_encoded",
+  "carrier_score",
+  "distance_to_next_hub_km"
+]
