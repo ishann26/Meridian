@@ -90,7 +90,7 @@ class RiskBadge extends StatelessWidget {
     if (predictedDelayHours != null && predictedDelayHours! > 0) {
       // e.g. "4.2h delay"
       final hoursStr = predictedDelayHours!.toStringAsFixed(1);
-      return '+$hoursStr\h delay';
+      return '+${hoursStr}h delay';
     }
     return 'delay risk';
   }
