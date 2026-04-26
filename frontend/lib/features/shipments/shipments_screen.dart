@@ -5,7 +5,7 @@ import 'package:meridian/core/theme/app_colors.dart';
 import 'package:meridian/core/theme/app_theme.dart';
 import 'package:meridian/data/models/shipment.dart';
 import 'package:meridian/data/repositories/shipment_repository.dart';
-import 'package:meridian/data/services/mock_shipment_service.dart';
+import 'package:meridian/core/di/service_locator.dart';
 import 'package:meridian/features/shipments/widgets/shipment_card.dart';
 
 /// Shipments — list of all cargo movements.
@@ -20,7 +20,7 @@ class ShipmentsScreen extends StatefulWidget {
 }
 
 class _ShipmentsScreenState extends State<ShipmentsScreen> {
-  final ShipmentRepository _repo = MockShipmentService();
+  final ShipmentRepository _repo = ServiceLocator.instance.shipmentRepo;
 
   List<Shipment> _shipments = [];
   bool _isLoading = true;

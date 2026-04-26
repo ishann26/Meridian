@@ -5,7 +5,7 @@ import 'package:meridian/core/theme/app_colors.dart';
 import 'package:meridian/core/theme/app_theme.dart';
 import 'package:meridian/data/models/impact_metric.dart';
 import 'package:meridian/data/repositories/impact_repository.dart';
-import 'package:meridian/data/services/mock_impact_service.dart';
+import 'package:meridian/core/di/service_locator.dart';
 
 /// Impact — sustainability & performance analytics dashboard.
 ///
@@ -20,7 +20,7 @@ class ImpactScreen extends StatefulWidget {
 }
 
 class _ImpactScreenState extends State<ImpactScreen> {
-  final ImpactRepository _repo = MockImpactService();
+  final ImpactRepository _repo = ServiceLocator.instance.impactRepo;
 
   List<ImpactMetric> _metrics = [];
   bool _isLoading = true;

@@ -4,7 +4,7 @@ import 'package:meridian/core/theme/app_colors.dart';
 import 'package:meridian/core/theme/app_theme.dart';
 import 'package:meridian/data/models/simulation_result.dart';
 import 'package:meridian/data/repositories/simulation_repository.dart';
-import 'package:meridian/data/services/mock_simulation_service.dart';
+import 'package:meridian/core/di/service_locator.dart';
 
 /// Simulation — compare current plan vs AI-optimized route.
 ///
@@ -18,7 +18,7 @@ class SimulationScreen extends StatefulWidget {
 }
 
 class _SimulationScreenState extends State<SimulationScreen> {
-  final SimulationRepository _repo = MockSimulationService();
+  final SimulationRepository _repo = ServiceLocator.instance.simulationRepo;
 
   SimulationResult? _result;
   bool _isLoading = false;

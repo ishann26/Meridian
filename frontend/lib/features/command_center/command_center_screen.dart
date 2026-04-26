@@ -6,8 +6,7 @@ import 'package:meridian/data/models/risk_alert.dart';
 import 'package:meridian/data/models/shipment.dart';
 import 'package:meridian/data/repositories/shipment_repository.dart';
 import 'package:meridian/data/repositories/risk_alert_repository.dart';
-import 'package:meridian/data/services/mock_shipment_service.dart';
-import 'package:meridian/data/services/mock_risk_alert_service.dart';
+import 'package:meridian/core/di/service_locator.dart';
 import 'package:meridian/features/command_center/widgets/metric_pill.dart';
 import 'package:meridian/features/command_center/widgets/route_map_card.dart';
 import 'package:meridian/features/command_center/widgets/risk_alert_card.dart';
@@ -27,9 +26,8 @@ class CommandCenterScreen extends StatefulWidget {
 }
 
 class _CommandCenterScreenState extends State<CommandCenterScreen> {
-  // Repositories (swap these for Firebase later).
-  final ShipmentRepository _shipmentRepo = MockShipmentService();
-  final RiskAlertRepository _riskAlertRepo = MockRiskAlertService();
+  final ShipmentRepository _shipmentRepo = ServiceLocator.instance.shipmentRepo;
+  final RiskAlertRepository _riskAlertRepo = ServiceLocator.instance.riskAlertRepo;
 
   List<Shipment> _shipments = [];
   List<RiskAlert> _alerts = [];

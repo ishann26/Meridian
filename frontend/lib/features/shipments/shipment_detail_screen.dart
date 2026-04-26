@@ -5,7 +5,7 @@ import 'package:meridian/core/theme/app_colors.dart';
 import 'package:meridian/core/theme/app_theme.dart';
 import 'package:meridian/data/models/shipment.dart';
 import 'package:meridian/data/repositories/shipment_repository.dart';
-import 'package:meridian/data/services/mock_shipment_service.dart';
+import 'package:meridian/core/di/service_locator.dart';
 
 /// Full logistics decision view for a single shipment.
 ///
@@ -20,7 +20,7 @@ class ShipmentDetailScreen extends StatefulWidget {
 }
 
 class _ShipmentDetailScreenState extends State<ShipmentDetailScreen> {
-  final ShipmentRepository _repo = MockShipmentService();
+  final ShipmentRepository _repo = ServiceLocator.instance.shipmentRepo;
   late Future<Shipment?> _future;
 
   @override
