@@ -49,6 +49,8 @@ venv/
 ENV/
 env/
 .env
+.env.*
+!.env.example
 .venv*
 pip-log.txt
 pip-delete-this-directory.txt
@@ -113,20 +115,25 @@ frontend/.packages
 **/android/app/src/main/res/raw/google_services.json
 **/ios/Runner/GoogleService-Info.plist
 
-# Node.js / AIS Stream Service
-ais-stream/.env
-ais-stream/node_modules/
+# Node.js
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm
+.eslintcache
+.stylelintcache
+.node_repl_history
+*.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
-# Node.js / Execution Agent
-backend/agents/execution\ agent/.env
-backend/agents/execution\ agent/node_modules/
-
-# Python / Monitoring Agent
-backend/agents/Monitoring\ agent/.env
-backend/agents/Monitoring\ agent/__pycache__/
-backend/agents/Monitoring\ agent/services/__pycache__/
-backend/agents/Monitoring\ agent/models/*.pkl
-*.pyc
-__pycache__/
-.venv/
-venv/
+# Agent Specific Data/Models
+**/models/*.pkl
+**/models/*.joblib
+**/models/*.json
+!**/models/feature_names.json
+!**/models/delay_predictor.json
