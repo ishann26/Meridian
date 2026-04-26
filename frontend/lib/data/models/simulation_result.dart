@@ -16,6 +16,25 @@ class SimulationInput {
     this.severityMultiplier = 1.0,
   });
 
+  /// Deserialize from a JSON map.
+  factory SimulationInput.fromJson(Map<String, dynamic> json) {
+    return SimulationInput(
+      scenario: ScenarioType.values.byName(json['scenario'] as String),
+      affectedNode: json['affectedNode'] as String,
+      durationDays: (json['durationDays'] as num).toInt(),
+      severityMultiplier:
+          (json['severityMultiplier'] as num?)?.toDouble() ?? 1.0,
+    );
+  }
+
+  /// Serialize to a JSON map.
+  Map<String, dynamic> toJson() => {
+        'scenario': scenario.name,
+        'affectedNode': affectedNode,
+        'durationDays': durationDays,
+        'severityMultiplier': severityMultiplier,
+      };
+
   final ScenarioType scenario;
 
   /// The port, route, or supplier being disrupted.
@@ -58,6 +77,36 @@ class SimulationResult {
     required this.mitigationSuggestion,
     required this.ranAt,
   });
+
+  /// Deserialize from a JSON map.
+  factory SimulationResult.fromJson(Map<String, dynamic> json) {
+    return SimulationResult(
+      id: json['id'] as String,
+      input: SimulationInput.fromJson(json['input'] as Map<String, dynamic>),
+      baselineCostUsd: (json['baselineCostUsd'] as num).toDouble(),
+      projectedCostUsd: (json['projectedCostUsd'] as num).toDouble(),
+      baselineDelayDays: (json['baselineDelayDays'] as num).toDouble(),
+      projectedDelayDays: (json['projectedDelayDays'] as num).toDouble(),
+      shipmentsAffected: (json['shipmentsAffected'] as num).toInt(),
+      riskDelta: (json['riskDelta'] as num).toDouble(),
+      mitigationSuggestion: json['mitigationSuggestion'] as String,
+      ranAt: DateTime.parse(json['ranAt'] as String),
+    );
+  }
+
+  /// Serialize to a JSON map.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'input': input.toJson(),
+        'baselineCostUsd': baselineCostUsd,
+        'projectedCostUsd': projectedCostUsd,
+        'baselineDelayDays': baselineDelayDays,
+        'projectedDelayDays': projectedDelayDays,
+        'shipmentsAffected': shipmentsAffected,
+        'riskDelta': riskDelta,
+        'mitigationSuggestion': mitigationSuggestion,
+        'ranAt': ranAt.toIso8601String(),
+      };
 
   final String id;
   final SimulationInput input;

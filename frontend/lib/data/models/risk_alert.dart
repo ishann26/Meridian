@@ -26,6 +26,38 @@ class RiskAlert {
     this.recommendation,
   });
 
+  /// Deserialize from a JSON map.
+  factory RiskAlert.fromJson(Map<String, dynamic> json) {
+    return RiskAlert(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
+      severity: RiskSeverity.values.byName(json['severity'] as String),
+      category: RiskCategory.values.byName(json['category'] as String),
+      affectedRegion: json['affectedRegion'] as String,
+      detectedAt: DateTime.parse(json['detectedAt'] as String),
+      confidence: (json['confidence'] as num).toDouble(),
+      affectedShipmentIds: (json['affectedShipmentIds'] as List<dynamic>?)
+              ?.cast<String>() ??
+          const [],
+      recommendation: json['recommendation'] as String?,
+    );
+  }
+
+  /// Serialize to a JSON map.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'description': description,
+        'severity': severity.name,
+        'category': category.name,
+        'affectedRegion': affectedRegion,
+        'detectedAt': detectedAt.toIso8601String(),
+        'confidence': confidence,
+        'affectedShipmentIds': affectedShipmentIds,
+        'recommendation': recommendation,
+      };
+
   final String id;
   final String title;
   final String description;

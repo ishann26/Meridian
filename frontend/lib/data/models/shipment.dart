@@ -28,6 +28,42 @@ class Shipment {
     this.delayHours = 0,
   });
 
+  /// Deserialize from a JSON map (Firebase / REST API).
+  factory Shipment.fromJson(Map<String, dynamic> json) {
+    return Shipment(
+      id: json['id'] as String,
+      trackingCode: json['trackingCode'] as String,
+      origin: json['origin'] as String,
+      destination: json['destination'] as String,
+      status: ShipmentStatus.values.byName(json['status'] as String),
+      mode: TransportMode.values.byName(json['mode'] as String),
+      departureDate: DateTime.parse(json['departureDate'] as String),
+      estimatedArrival: DateTime.parse(json['estimatedArrival'] as String),
+      weightKg: (json['weightKg'] as num).toDouble(),
+      cargoDescription: json['cargoDescription'] as String,
+      progress: (json['progress'] as num).toDouble(),
+      currentLocation: json['currentLocation'] as String?,
+      delayHours: (json['delayHours'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  /// Serialize to a JSON map.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'trackingCode': trackingCode,
+        'origin': origin,
+        'destination': destination,
+        'status': status.name,
+        'mode': mode.name,
+        'departureDate': departureDate.toIso8601String(),
+        'estimatedArrival': estimatedArrival.toIso8601String(),
+        'weightKg': weightKg,
+        'cargoDescription': cargoDescription,
+        'progress': progress,
+        'currentLocation': currentLocation,
+        'delayHours': delayHours,
+      };
+
   final String id;
   final String trackingCode;
   final String origin;

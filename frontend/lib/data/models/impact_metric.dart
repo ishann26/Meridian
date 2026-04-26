@@ -24,6 +24,34 @@ class ImpactMetric {
     this.target,
   });
 
+  /// Deserialize from a JSON map.
+  factory ImpactMetric.fromJson(Map<String, dynamic> json) {
+    return ImpactMetric(
+      id: json['id'] as String,
+      label: json['label'] as String,
+      value: (json['value'] as num).toDouble(),
+      unit: json['unit'] as String,
+      category: ImpactCategory.values.byName(json['category'] as String),
+      trend: MetricTrend.values.byName(json['trend'] as String),
+      changePercent: (json['changePercent'] as num).toDouble(),
+      period: json['period'] as String,
+      target: (json['target'] as num?)?.toDouble(),
+    );
+  }
+
+  /// Serialize to a JSON map.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'label': label,
+        'value': value,
+        'unit': unit,
+        'category': category.name,
+        'trend': trend.name,
+        'changePercent': changePercent,
+        'period': period,
+        'target': target,
+      };
+
   final String id;
 
   /// Display name, e.g. "Carbon Footprint".
