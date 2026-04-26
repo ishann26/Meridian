@@ -14,7 +14,7 @@ class SmartLogiChainApp extends StatelessWidget {
   const SmartLogiChainApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) {  
     return MaterialApp.router(
       title: 'SmartLogiChain',
       debugShowCheckedModeBanner: false,
