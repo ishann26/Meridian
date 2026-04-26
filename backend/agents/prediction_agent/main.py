@@ -69,6 +69,15 @@ class PredictionResponse(BaseModel):
     risk_level: str
     explanation: str
 
+class BatchPredictionItem(PredictionRequest):
+    shipment_id: str
+
+class BatchPredictionRequest(BaseModel):
+    shipments: List[BatchPredictionItem]
+
+class BatchPredictionItemResponse(PredictionResponse):
+    shipment_id: str
+
 # --- App Initialization ---
 
 app = FastAPI(title="Meridian Prediction Agent")
@@ -194,63 +203,87 @@ def health_check():
         "timestamp": datetime.now().isoformat()
     }
 
+def _predict_single(request: PredictionRequest) -> PredictionResponse:
+    # 1. Feature Engineering
+    X_infer = map_request_to_features(request)
+    
+    # 2. Prediction
+    proba = float(model.predict_proba(X_infer)[0, 1])
+    
+    # 3. Post-process to get insights
+    predicted_delay_hours = proba * 48.0  # simple heuristic (max 48h)
+    
+    # Get feature importances (approximate local importance using global weights * feature value)
+    global_importances = model.feature_importances_
+    feature_vals = X_infer.iloc[0].values
+    # simple proxy for local importance: value * global_importance
+    local_importances = np.abs(feature_vals * global_importances)
+    total = np.sum(local_importances) + 1e-9
+    normalized_importances = local_importances / total
+    
+    top_indices = np.argsort(normalized_importances)[::-1][:3]
+    top_features = [
+        TopFeature(
+            feature=feature_names[idx],
+            importance=round(float(normalized_importances[idx]), 4)
+        )
+        for idx in top_indices
+    ]
+
+    # Check for critical features in the top features
+    critical_feature_names = ["congestion_index", "weather_score", "route_deviation_meters"]
+    has_critical_feature = any(tf.feature in critical_feature_names for tf in top_features)
+
+    if proba >= 0.75 or (proba >= 0.60 and has_critical_feature):
+        risk_level = "HIGH"
+        # TODO: emit event or call monitoring/rerouting agents later
+        explanation = "High risk due to critical route conditions (e.g. congestion, weather, or deviation)."
+    elif proba > 0.25:
+        risk_level = "MEDIUM"
+        explanation = "Moderate risk. Monitor route closely."
+    else:
+        risk_level = "LOW"
+        explanation = "Low risk. Shipment is proceeding on schedule."
+
+    return PredictionResponse(
+        delay_probability=round(proba, 4),
+        predicted_delay_hours=round(predicted_delay_hours, 1),
+        top_features=top_features,
+        risk_level=risk_level,
+        explanation=explanation
+    )
+
 @app.post("/predict", response_model=PredictionResponse)
 def predict_delay(request: PredictionRequest):
     if not feature_names:
         raise HTTPException(status_code=500, detail="Model is not loaded.")
         
     try:
-        # 1. Feature Engineering
-        X_infer = map_request_to_features(request)
-        
-        # 2. Prediction
-        proba = float(model.predict_proba(X_infer)[0, 1])
-        
-        # 3. Post-process to get insights
-        predicted_delay_hours = proba * 48.0  # simple heuristic (max 48h)
-        
-        # Get feature importances (approximate local importance using global weights * feature value)
-        global_importances = model.feature_importances_
-        feature_vals = X_infer.iloc[0].values
-        # simple proxy for local importance: value * global_importance
-        local_importances = np.abs(feature_vals * global_importances)
-        total = np.sum(local_importances) + 1e-9
-        normalized_importances = local_importances / total
-        
-        top_indices = np.argsort(normalized_importances)[::-1][:3]
-        top_features = [
-            TopFeature(
-                feature=feature_names[idx],
-                importance=round(float(normalized_importances[idx]), 4)
-            )
-            for idx in top_indices
-        ]
-
-        # Check for critical features in the top features
-        critical_feature_names = ["congestion_index", "weather_score", "route_deviation_meters"]
-        has_critical_feature = any(tf.feature in critical_feature_names for tf in top_features)
-
-        if proba >= 0.75 or (proba >= 0.60 and has_critical_feature):
-            risk_level = "HIGH"
-            # TODO: emit event or call monitoring/rerouting agents later
-            explanation = "High risk due to critical route conditions (e.g. congestion, weather, or deviation)."
-        elif proba > 0.25:
-            risk_level = "MEDIUM"
-            explanation = "Moderate risk. Monitor route closely."
-        else:
-            risk_level = "LOW"
-            explanation = "Low risk. Shipment is proceeding on schedule."
-
-        return PredictionResponse(
-            delay_probability=round(proba, 4),
-            predicted_delay_hours=round(predicted_delay_hours, 1),
-            top_features=top_features,
-            risk_level=risk_level,
-            explanation=explanation
-        )
-        
+        return _predict_single(request)
     except Exception as e:
         logger.error(f"Prediction error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/batch_predict", response_model=List[BatchPredictionItemResponse])
+def batch_predict_delay(request: BatchPredictionRequest):
+    if not feature_names:
+        raise HTTPException(status_code=500, detail="Model is not loaded.")
+        
+    try:
+        results = []
+        for shipment in request.shipments:
+            single_resp = _predict_single(shipment)
+            results.append(BatchPredictionItemResponse(
+                shipment_id=shipment.shipment_id,
+                delay_probability=single_resp.delay_probability,
+                predicted_delay_hours=single_resp.predicted_delay_hours,
+                top_features=single_resp.top_features,
+                risk_level=single_resp.risk_level,
+                explanation=single_resp.explanation
+            ))
+        return results
+    except Exception as e:
+        logger.error(f"Batch prediction error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

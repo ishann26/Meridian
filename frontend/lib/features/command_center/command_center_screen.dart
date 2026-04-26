@@ -13,6 +13,7 @@ import 'package:meridian/features/command_center/widgets/risk_alert_card.dart';
 import 'package:meridian/features/command_center/widgets/ai_recommendation_card.dart';
 import 'package:meridian/shared/widgets/section_header.dart';
 import 'package:meridian/widgets/fleet_impact_forecaster.dart';
+import 'package:meridian/screens/risk_radar_view.dart';
 
 /// Command Center — the main dashboard.
 ///
@@ -105,6 +106,32 @@ class _CommandCenterScreenState extends State<CommandCenterScreen> {
 
                     // ── KPI Metric pills ────────────────────────
                     _buildMetricStrip(),
+
+                    const SizedBox(height: AppTheme.spacingXl),
+
+                    // ── Open Risk Radar Button ──────────────────────
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const RiskRadarView()),
+                          );
+                        },
+                        icon: const Icon(Icons.radar_rounded, size: 20),
+                        label: Text('Open Risk Radar', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentMint,
+                          foregroundColor: AppColors.panelDark,
+                          elevation: 4,
+                          shadowColor: AppColors.shadow,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                          ),
+                        ),
+                      ),
+                    ),
 
                     const SizedBox(height: AppTheme.spacingXl),
 
