@@ -1,0 +1,27 @@
+# ============================================================
+# Meridian Monitoring Agent — Dependencies
+# ============================================================
+
+# Google Cloud Platform
+google-cloud-bigquery>=3.13.0
+google-cloud-firestore>=2.13.0
+google-cloud-pubsub>=2.18.0
+google-cloud-scheduler>=2.11.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# HTTP Client (async)
+httpx>=0.25.0
+
+# ML / Numerical
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# Server (for Cloud Function / API endpoints)
+flask>=3.0.0
+gunicorn>=21.2.0
+functions-framework>=3.5.0
+
+# Utilities
+python-dateutil>=2.8.0

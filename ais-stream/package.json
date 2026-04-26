@@ -1,0 +1,20 @@
+{
+  "name": "meridian-ais-stream",
+  "version": "1.0.0",
+  "description": "AISStream WebSocket → Pub/Sub + Firestore bridge for Meridian",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.9.0",
+    "@google-cloud/pubsub": "^4.7.0",
+    "dotenv": "^16.4.5",
+    "ws": "^8.17.1"
+  },
+  "license": "MIT"
+}

@@ -112,3 +112,21 @@ frontend/.packages
 **/android/key.properties
 **/android/app/src/main/res/raw/google_services.json
 **/ios/Runner/GoogleService-Info.plist
+
+# Node.js / AIS Stream Service
+ais-stream/.env
+ais-stream/node_modules/
+
+# Node.js / Execution Agent
+backend/agents/execution\ agent/.env
+backend/agents/execution\ agent/node_modules/
+
+# Python / Monitoring Agent
+backend/agents/Monitoring\ agent/.env
+backend/agents/Monitoring\ agent/__pycache__/
+backend/agents/Monitoring\ agent/services/__pycache__/
+backend/agents/Monitoring\ agent/models/*.pkl
+*.pyc
+__pycache__/
+.venv/
+venv/
