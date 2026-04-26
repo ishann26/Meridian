@@ -1,1 +1,0 @@
-"""Meridian Backend — Prediction Agent."""
