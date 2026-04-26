@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -131,7 +132,7 @@ def health():
     summary="Run the full multi-agent logistics pipeline",
     response_description="Complete pipeline result with all agent outputs",
 )
-def run(request: PipelineRequest):
+async def run(request: PipelineRequest):
     """
     Executes the Meridian multi-agent pipeline:
 
@@ -159,7 +160,7 @@ def run(request: PipelineRequest):
     }
 
     try:
-        result = run_pipeline(input_data)
+        result = await run_in_threadpool(run_pipeline, input_data)
     except Exception as e:
         logger.error("Pipeline execution failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Pipeline failed: {e}")
