@@ -50,7 +50,3 @@ frontend/.dart_tool/
 frontend/.flutter-plugins
 frontend/.flutter-plugins-dependencies
 frontend/.packages
-backend/prediction_agent/data/*.csv
-backend/prediction_agent/data/
-backend/prediction_agent/data/
-backend/prediction_agent/data/
