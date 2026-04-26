@@ -1,7 +1,4 @@
-// SmartLogiChain — Mock Data
-//
-// Barrel file. Add mock data exports here:
-//   export 'mock_shipments.dart';
-//   export 'mock_routes.dart';
-//   export 'mock_disruptions.dart';
-//   export 'mock_warehouses.dart';
+export 'mock_shipments.dart';
+export 'mock_risk_alerts.dart';
+export 'mock_routes.dart';
+export 'mock_impact_metrics.dart';
