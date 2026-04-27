@@ -87,6 +87,10 @@ class MonitoringEngine:
         )
 
         # ── Step 3: Combine into Score ──────────────────────
+        logger.debug(
+            "[Monitoring] Deviations for %s: time=%d min, route=%.2f km, risk=%.2f",
+            shipment_id, time_dev.delay_minutes, route_dev.distance_from_route_km, risk_pred.predicted_delay_probability
+        )
         deviation_score = self._compute_deviation_score(time_dev, route_dev, risk_pred)
         severity = SeverityLevel.from_score(deviation_score)
         is_disruption = deviation_score > settings.thresholds.disruption_threshold
@@ -106,15 +110,26 @@ class MonitoringEngine:
             "[%s] Shipment %s — score=%.1f severity=%s disruption=%s",
             trigger.value, shipment_id, deviation_score, severity.value, is_disruption,
         )
+        if is_disruption:
+            logger.warning(
+                "[Monitoring] DISRUPTION DETECTED: %s (Severity: %s, Score: %.1f)",
+                shipment_id, severity.value, deviation_score
+            )
 
         # ── Step 4: Emit if Disrupted ───────────────────────
         if is_disruption:
             event = self._build_disruption_event(result, planned, live, context, risk_pred)
             await self._emit_disruption(event)
 
-            # Update shipment status in Firestore
-            if severity in (SeverityLevel.HIGH, SeverityLevel.CRITICAL):
-                self.firestore.update_shipment_status(shipment_id, ShipmentStatus.DELAYED)
+            # Update live shipment state in Firestore with standardized fields
+            new_status = ShipmentStatus.DELAYED if severity in (SeverityLevel.HIGH, SeverityLevel.CRITICAL) else live.status
+            self.firestore.update_live_shipment(
+                shipment_id=shipment_id,
+                status=new_status.value,
+                severity=severity.value,
+                current_location=live.current_location.to_dict(),
+                delay_prediction=risk_pred.predicted_delay_minutes
+            )
 
             return event
 
@@ -298,8 +313,38 @@ class MonitoringEngine:
 
         return top
 
+    def predictDelay(self, event: DisruptionEvent) -> dict:
+        """Synchronously call the flight delay prediction model."""
+        import requests
+        try:
+            # We pass the metadata and current state for the model to use
+            payload = {
+                **event.current_state,
+                **event.metadata,
+                "reason": event.reason.value,
+                "severity": event.severity.value
+            }
+            resp = requests.post("http://localhost:8000/predict/flight", json=payload, timeout=5.0)
+            if resp.status_code == 200:
+                delay = resp.json().get("delay", 0)
+                prob = 0.85 if delay > 0 else 0.1  # Arbitrary probability based on delay
+                return {"delay_minutes": delay, "delay_probability": prob}
+        except Exception as e:
+            logger.error("Synchronous predictDelay failed: %s", e)
+            
+        return {"delay_minutes": 0, "delay_probability": 0.0}
+
     async def _emit_disruption(self, event: DisruptionEvent) -> None:
         """Emit disruption event to Pub/Sub + persist in Firestore."""
+        # 1. Synchronously call prediction before emitting
+        preds = self.predictDelay(event)
+        
+        # 2. Attach new predictions format
+        event.predictions = {
+            "delay_minutes": preds.get("delay_minutes", 0),
+            "delay_probability": preds.get("delay_probability", 0.0)
+        }
+
         logger.warning(
             "🚨 DISRUPTION DETECTED — shipment=%s reason=%s severity=%s score=%.1f",
             event.shipment_id, event.reason.value, event.severity.value, event.deviation_score,

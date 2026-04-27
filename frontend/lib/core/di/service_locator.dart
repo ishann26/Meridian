@@ -3,7 +3,7 @@ import 'package:meridian/data/repositories/risk_alert_repository.dart';
 import 'package:meridian/data/repositories/route_repository.dart';
 import 'package:meridian/data/repositories/simulation_repository.dart';
 import 'package:meridian/data/repositories/impact_repository.dart';
-import 'package:meridian/data/services/mock_shipment_service.dart';
+import 'package:meridian/data/services/api_shipment_service.dart';
 import 'package:meridian/data/services/mock_risk_alert_service.dart';
 import 'package:meridian/data/services/mock_route_service.dart';
 import 'package:meridian/data/services/mock_simulation_service.dart';
@@ -27,7 +27,7 @@ class ServiceLocator {
   // ── Repositories ──────────────────────────────────────────
   // Swap the right-hand side to switch implementations.
 
-  final ShipmentRepository shipmentRepo = MockShipmentService();
+  final ShipmentRepository shipmentRepo = ApiShipmentService();
   final RiskAlertRepository riskAlertRepo = MockRiskAlertService();
   final RouteRepository routeRepo = MockRouteService();
   final SimulationRepository simulationRepo = MockSimulationService();

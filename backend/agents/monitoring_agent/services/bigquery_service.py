@@ -22,6 +22,7 @@ class BigQueryService:
 
     def __init__(self):
         self._client: Optional[bigquery.Client] = None
+        self._cache = {} # Simple in-memory cache for planned states
 
     @property
     def client(self) -> bigquery.Client:
@@ -31,7 +32,11 @@ class BigQueryService:
         return self._client
 
     def get_planned_state(self, shipment_id: str) -> Optional[PlannedState]:
-        """Fetch the planned state for a single shipment."""
+        """Fetch the planned state for a single shipment (cached)."""
+        if shipment_id in self._cache:
+            logger.debug("Cache hit for planned state: %s", shipment_id)
+            return self._cache[shipment_id]
+
         query = f"""
             SELECT
                 s.shipment_id,
@@ -61,7 +66,7 @@ class BigQueryService:
             # Fetch route waypoints
             route = self._get_planned_route(shipment_id)
 
-            return PlannedState(
+            state = PlannedState(
                 shipment_id=row.shipment_id,
                 planned_departure_time=row.planned_departure_time,
                 planned_arrival_time=row.planned_arrival_time,
@@ -71,6 +76,10 @@ class BigQueryService:
                 origin=GeoPoint(lat=row.origin_lat, lng=row.origin_lng),
                 destination=GeoPoint(lat=row.destination_lat, lng=row.destination_lng),
             )
+
+            # Store in cache
+            self._cache[shipment_id] = state
+            return state
         except Exception as e:
             logger.error("BigQuery fetch failed for shipment %s: %s", shipment_id, e)
             raise

@@ -32,8 +32,15 @@ class PubSubService:
     @property
     def publisher(self) -> pubsub_v1.PublisherClient:
         if self._publisher is None:
+            # Custom retry for transient errors
+            custom_retry = api_retry.Retry(
+                initial=0.2,  # seconds
+                maximum=60.0,
+                multiplier=2.0,
+                deadline=120.0,
+            )
             self._publisher = pubsub_v1.PublisherClient()
-            logger.info("Pub/Sub publisher client initialized")
+            logger.info("Pub/Sub publisher client initialized (with retry)")
         return self._publisher
 
     @property
@@ -62,12 +69,20 @@ class PubSubService:
         payload = json.dumps(event.to_dict()).encode("utf-8")
 
         try:
+            # Reusable retry config
+            custom_retry = api_retry.Retry(
+                initial=0.2, maximum=60.0, multiplier=2.0, deadline=120.0
+            )
+
             future = self.publisher.publish(
                 topic,
                 data=payload,
                 shipment_id=event.shipment_id,
                 severity=event.severity.value,
                 event_type=event.type,
+                event_id=str(event.event_id),
+                timestamp=event.timestamp.isoformat() + "Z",
+                retry=custom_retry
             )
             message_id = future.result(timeout=30)
             logger.info(

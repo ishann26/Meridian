@@ -23,6 +23,26 @@ process.on("unhandledRejection", (reason) => {
 
 const pubsub = new PubSub({ projectId: config.gcpProjectId });
 
+// ── Duplicate Tracking ────────────────────────────────────────────────────────
+
+const MAX_PROCESSED_EVENTS = 1000;
+const processedEvents = new Set();
+const processedEventsQueue = [];
+
+function isDuplicate(eventId) {
+  if (!eventId) return false;
+  if (processedEvents.has(eventId)) return true;
+  
+  processedEvents.add(eventId);
+  processedEventsQueue.push(eventId);
+  
+  if (processedEventsQueue.length > MAX_PROCESSED_EVENTS) {
+    const oldest = processedEventsQueue.shift();
+    processedEvents.delete(oldest);
+  }
+  return false;
+}
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 const stats = {
@@ -85,6 +105,17 @@ function startListening(processEvent) {
       );
       message.nack();
       stats.nacked++;
+      return;
+    }
+
+    // 2.5. Duplicate check
+    const eventId = event.event_id || message.attributes?.event_id;
+    if (eventId && isDuplicate(eventId)) {
+      console.log(
+        `[Subscriber] msg_id=${msgId} — Duplicate event_id=${eventId}, acking and skipping.`
+      );
+      message.ack();
+      stats.acked++;
       return;
     }
 

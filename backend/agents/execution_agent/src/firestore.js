@@ -39,11 +39,20 @@ async function updateShipment(shipment_id, data) {
   const docRef = db.collection(collection).doc(String(shipment_id));
 
   const payload = {
+    shipment_id:      String(shipment_id),
     status:           "DISRUPTED",
     severity:         data.severity         ?? null,
     delay_prediction: data.delay_prediction ?? null,
+    current_location: data.current_location ?? null,
     last_updated:     Firestore.FieldValue.serverTimestamp(),
   };
+
+  if (data.new_route !== undefined) {
+    payload.route = data.new_route;
+  }
+  if (data.estimated_time !== undefined) {
+    payload.estimated_time = data.estimated_time;
+  }
 
   // merge: true → upsert (preserves any existing fields not in this payload)
   await docRef.set(payload, { merge: true });

@@ -26,43 +26,53 @@ class Shipment {
     required this.progress,
     this.currentLocation,
     this.delayHours = 0,
+    this.severity,
   });
 
   /// Deserialize from a JSON map (Firebase / REST API).
   factory Shipment.fromJson(Map<String, dynamic> json) {
     return Shipment(
-      id: json['id'] as String,
-      trackingCode: json['trackingCode'] as String,
-      origin: json['origin'] as String,
-      destination: json['destination'] as String,
-      status: ShipmentStatus.values.byName(json['status'] as String),
-      mode: TransportMode.values.byName(json['mode'] as String),
-      departureDate: DateTime.parse(json['departureDate'] as String),
-      estimatedArrival: DateTime.parse(json['estimatedArrival'] as String),
-      weightKg: (json['weightKg'] as num).toDouble(),
-      cargoDescription: json['cargoDescription'] as String,
-      progress: (json['progress'] as num).toDouble(),
+      id: (json['shipment_id'] ?? json['id']) as String,
+      trackingCode: json['trackingCode'] as String? ?? 'TRK-${json['shipment_id']}',
+      origin: json['origin'] as String? ?? 'N/A',
+      destination: json['destination'] as String? ?? 'N/A',
+      status: _parseStatus(json['status'] as String?),
+      mode: _parseMode(json['mode'] as String?),
+      departureDate: _parseDate(json['departureDate']),
+      estimatedArrival: _parseDate(json['estimatedArrival']),
+      weightKg: (json['weightKg'] as num?)?.toDouble() ?? 0.0,
+      cargoDescription: json['cargoDescription'] as String? ?? 'General Cargo',
+      progress: (json['progress'] as num?)?.toDouble() ?? 0.0,
       currentLocation: json['currentLocation'] as String?,
-      delayHours: (json['delayHours'] as num?)?.toInt() ?? 0,
+      delayHours: (json['delay_prediction'] as num?)?.toInt() ?? 0,
+      severity: json['severity'] as String?,
     );
   }
 
-  /// Serialize to a JSON map.
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'trackingCode': trackingCode,
-        'origin': origin,
-        'destination': destination,
-        'status': status.name,
-        'mode': mode.name,
-        'departureDate': departureDate.toIso8601String(),
-        'estimatedArrival': estimatedArrival.toIso8601String(),
-        'weightKg': weightKg,
-        'cargoDescription': cargoDescription,
-        'progress': progress,
-        'currentLocation': currentLocation,
-        'delayHours': delayHours,
-      };
+  static ShipmentStatus _parseStatus(String? status) {
+    if (status == null) return ShipmentStatus.preparing;
+    final lower = status.toLowerCase();
+    if (lower.contains('transit')) return ShipmentStatus.inTransit;
+    if (lower.contains('delay') || lower.contains('disrupt')) return ShipmentStatus.delayed;
+    if (lower.contains('custom')) return ShipmentStatus.customs;
+    if (lower.contains('deliver')) return ShipmentStatus.delivered;
+    return ShipmentStatus.preparing;
+  }
+
+  static TransportMode _parseMode(String? mode) {
+    if (mode == null) return TransportMode.sea;
+    final lower = mode.toLowerCase();
+    if (lower.contains('road')) return TransportMode.road;
+    if (lower.contains('rail')) return TransportMode.rail;
+    if (lower.contains('air')) return TransportMode.air;
+    return TransportMode.sea;
+  }
+
+  static DateTime _parseDate(dynamic date) {
+    if (date == null) return DateTime.now();
+    if (date is String) return DateTime.tryParse(date) ?? DateTime.now();
+    return DateTime.now();
+  }
 
   final String id;
   final String trackingCode;
@@ -74,15 +84,10 @@ class Shipment {
   final DateTime estimatedArrival;
   final double weightKg;
   final String cargoDescription;
-
-  /// 0.0 – 1.0 representing journey completion.
   final double progress;
-
-  /// Current lat/lng description (e.g. "Arabian Sea").
   final String? currentLocation;
-
-  /// Hours of delay, 0 if on time.
   final int delayHours;
+  final String? severity; // Added severity
 
   /// Human-readable status label.
   String get statusLabel {

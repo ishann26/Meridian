@@ -61,13 +61,15 @@ function extractPosition(raw) {
 function toShipUpdate({ mmsi, lat, lng, speed, heading, vesselName, msgType }) {
   return {
     shipment_id:      String(mmsi),
+    status:           "IN_TRANSIT",
+    severity:         null,
     current_location: { lat, lng },
+    delay_prediction: null,
+    route:            [],
     speed_knots:      speed,
     heading,
     vessel_name:      vesselName,
     message_type:     msgType,
-    status:           "IN_TRANSIT",
-    timestamp:        new Date().toISOString(),
   };
 }
 

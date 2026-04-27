@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,7 @@ import 'package:meridian/core/theme/app_theme.dart';
 import 'package:meridian/data/models/shipment.dart';
 import 'package:meridian/data/repositories/shipment_repository.dart';
 import 'package:meridian/core/di/service_locator.dart';
+import 'package:meridian/data/services/api_shipment_service.dart';
 import 'package:meridian/features/shipments/widgets/shipment_card.dart';
 
 /// Shipments — list of all cargo movements.
@@ -29,6 +31,65 @@ class _ShipmentsScreenState extends State<ShipmentsScreen> {
   void initState() {
     super.initState();
     _load();
+    _listenToUpdates();
+  }
+
+  void _listenToUpdates() {
+    final repo = _repo;
+    if (repo is ApiShipmentService) {
+      repo.updates.listen((message) {
+        try {
+          final decoded = json.decode(message);
+          if (decoded['type'] == 'SHIPMENT_UPDATE') {
+            final data = decoded['data'];
+            final severity = data['severity'] as String?;
+            
+            // Show alert if it's a new or modified disruption
+            if (severity != null && severity != 'NORMAL') {
+              _showDisruptionAlert(data['shipment_id'] ?? 'Unknown', severity);
+            }
+          }
+        } catch (e) {
+          // Ignore non-json or malformed messages
+        }
+        _load();
+      });
+    }
+  }
+
+  void _showDisruptionAlert(String id, String severity) {
+    if (!mounted) return;
+
+    Color color;
+    switch (severity.toUpperCase()) {
+      case 'LOW':
+        color = AppColors.success;
+        break;
+      case 'MEDIUM':
+      case 'MODERATE':
+        color = AppColors.warning;
+        break;
+      case 'HIGH':
+      case 'CRITICAL':
+        color = AppColors.error;
+        break;
+      default:
+        color = AppColors.panelDark;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'DISRUPTION: Shipment $id is now $severity',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.white),
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   Future<void> _load() async {

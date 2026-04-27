@@ -26,7 +26,8 @@ async function processEvent(event) {
   const result = { shipment_id: id, severity, actions_taken: [], errors: [] };
   const fsData = {
     severity,
-    delay_prediction: event.predictions?.predicted_delay_minutes ?? null,
+    delay_prediction: event.predictions?.delay_minutes ?? null,
+    current_location: event.current_state?.location ?? null,
   };
 
   // ── Action helpers ──────────────────────────────────────────────────────────
@@ -56,15 +57,23 @@ async function processEvent(event) {
     }
   }
 
-  function tryReroute() {
+  async function tryReroute() {
     console.log(`[Action] rerouteShipment→ START  (shipment=${id})`);
     try {
-      result.rerouting = rerouteShipment(event);
+      result.rerouting = await rerouteShipment({
+        shipment_id: id,
+        current_state: event.current_state,
+        predictions: event.predictions
+      });
       result.actions_taken.push("rerouteShipment");
       console.log(
         `[Action] rerouteShipment→ OK     (shipment=${id}) ` +
-        `route=[${result.rerouting.new_route.join(" → ")}] improvement=${result.rerouting.improvement}%`
+        `route=[${result.rerouting.new_route.join(" → ")}] improvement=${result.rerouting.improvement}`
       );
+      
+      // Add routing result to Firestore update data
+      fsData.new_route = result.rerouting.new_route;
+      fsData.estimated_time = result.rerouting.estimated_time;
     } catch (err) {
       result.errors.push(`rerouteShipment: ${err.message}`);
       console.error(`[Action] rerouteShipment→ FAILED (shipment=${id}): ${err.message} [non-fatal]`);
@@ -81,9 +90,9 @@ async function processEvent(event) {
     await trySendAlert();
 
   } else if (severity === "HIGH" || severity === "CRITICAL") {
+    await tryReroute();
     await tryUpdateShipment();
     await trySendAlert();
-    tryReroute();
 
   } else {
     console.warn(`[Event] Unknown severity "${severity}" — defaulting to updateShipment.`);

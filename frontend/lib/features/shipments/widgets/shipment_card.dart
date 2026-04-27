@@ -20,7 +20,11 @@ class ShipmentCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   // ── Risk level derived from delay + status ───────────────
+  // ── Risk level derived from severity + status ───────────
   String get _riskLabel {
+    if (shipment.severity != null && shipment.severity != 'NORMAL') {
+      return shipment.severity!.toUpperCase();
+    }
     if (shipment.status == ShipmentStatus.delayed && shipment.delayHours > 24) {
       return 'HIGH';
     }
@@ -33,8 +37,10 @@ class ShipmentCard extends StatelessWidget {
 
   Color get _riskColor {
     switch (_riskLabel) {
+      case 'CRITICAL':
       case 'HIGH':
         return AppColors.warning;
+      case 'MODERATE':
       case 'MEDIUM':
         return AppColors.accentTan;
       default:
@@ -43,8 +49,9 @@ class ShipmentCard extends StatelessWidget {
   }
 
   double get _delayProbability {
-    if (_riskLabel == 'HIGH') return 0.85;
-    if (_riskLabel == 'MEDIUM') return 0.45;
+    final label = _riskLabel;
+    if (label == 'CRITICAL' || label == 'HIGH') return 0.85;
+    if (label == 'MODERATE' || label == 'MEDIUM') return 0.45;
     return 0.10;
   }
 
@@ -86,6 +93,10 @@ class ShipmentCard extends StatelessWidget {
           color: AppColors.bgCard,
           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
           boxShadow: AppTheme.cardShadow,
+          border: (shipment.severity != null && shipment.severity != 'NORMAL') || 
+                  shipment.status == ShipmentStatus.delayed
+              ? Border.all(color: AppColors.warning.withValues(alpha: 0.3), width: 1.5)
+              : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

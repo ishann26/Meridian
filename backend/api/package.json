@@ -1,0 +1,17 @@
+{
+  "name": "meridian-express-api",
+  "version": "1.0.0",
+  "description": "Express API for Meridian logistics monitoring",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "@google-cloud/firestore": "^6.0.0",
+    "dotenv": "^16.0.3",
+    "cors": "^2.8.5",
+    "ws": "^8.13.0"
+  }
+}

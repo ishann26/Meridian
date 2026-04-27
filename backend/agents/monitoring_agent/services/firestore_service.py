@@ -106,20 +106,38 @@ class FirestoreService:
 
     def update_shipment_status(self, shipment_id: str, status: ShipmentStatus) -> None:
         """Update the live shipment status in Firestore."""
+        self.update_live_shipment(shipment_id=shipment_id, status=status.value)
+
+    def update_live_shipment(
+        self, 
+        shipment_id: str, 
+        status: str, 
+        severity: Optional[str] = None,
+        current_location: Optional[Dict[str, float]] = None,
+        delay_prediction: Optional[float] = None,
+        route: Optional[List[Any]] = None
+    ) -> None:
+        """Update the live shipment document in standardized format."""
         try:
             doc_ref = (
                 self.client
                 .collection(settings.firestore.shipments_collection)
                 .document(shipment_id)
             )
-            doc_ref.update({
-                "status": status.value,
-                "last_updated": datetime.utcnow().isoformat(),
-            })
-            logger.info("Updated shipment %s status to %s", shipment_id, status.value)
-
+            payload = {
+                "shipment_id": shipment_id,
+                "status": status,
+                "severity": severity,
+                "current_location": current_location,
+                "delay_prediction": delay_prediction,
+                "route": route,
+                "last_updated": firestore.SERVER_TIMESTAMP,
+            }
+            # Remove None values to avoid overwriting existing data with None if not provided
+            doc_ref.set({k: v for k, v in payload.items() if v is not None}, merge=True)
+            logger.info("Standardized update for shipment %s in Firestore", shipment_id)
         except Exception as e:
-            logger.error("Failed to update status for shipment %s: %s", shipment_id, e)
+            logger.error("Failed standardized update for shipment %s: %s", shipment_id, e)
 
     # ── Helpers ─────────────────────────────────────────────
 

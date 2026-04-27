@@ -7,63 +7,65 @@
 
 "use strict";
 
-// ── Mock route nodes (simulating a logistics network) ─────────────────────────
-
-const MOCK_ROUTES = {
-  LOW:      { nodes: ["N1", "N2", "N3"],          improvement: 10 },
-  MODERATE: { nodes: ["N1", "N3", "N5"],          improvement: 25 },
-  HIGH:     { nodes: ["N2", "N4", "N6", "N8"],    improvement: 40 },
-  CRITICAL: { nodes: ["N1", "N7", "N9", "N10"],   improvement: 60 },
-};
-
-const DEFAULT_ROUTE = { nodes: ["N1", "N2", "N3"], improvement: 10 };
-
-// ── rerouteShipment ───────────────────────────────────────────────────────────
+const ROUTING_AGENT_URL = process.env.ROUTING_AGENT_URL || "http://127.0.0.1:8001/reroute";
 
 /**
- * Decide on a rerouting action for a disrupted shipment.
- *
- * @param {Object} event                    - DisruptionEvent from Pub/Sub
- * @param {string} event.shipment_id
- * @param {string} [event.severity]         - "LOW" | "MODERATE" | "HIGH" | "CRITICAL"
- * @param {Object} [event.current_state]    - { location, status, speed_kmh, ... }
- * @param {Object} [event.predictions]      - { delay_probability, predicted_delay_minutes, ... }
- *
- * @returns {{
- *   action:      string,
- *   shipment_id: string,
- *   new_route:   string[],
- *   improvement: number,
- *   severity:    string,
- *   decided_at:  string
- * }}
+ * Call real routing logic
+ * @param {Object} params
+ * @param {string} params.shipment_id
+ * @param {Object} params.current_state
+ * @param {Object} params.predictions
  */
-function rerouteShipment(event) {
-  if (!event || !event.shipment_id) {
-    throw new Error("rerouteShipment: event with shipment_id is required.");
+async function rerouteShipment({ shipment_id, current_state, predictions }) {
+  if (!shipment_id) {
+    throw new Error("rerouteShipment: shipment_id is required.");
   }
 
-  const severity  = (event.severity ?? "LOW").toUpperCase();
-  const route     = MOCK_ROUTES[severity] ?? DEFAULT_ROUTE;
-
-  const decision = {
-    action:      "REROUTED",
-    shipment_id: String(event.shipment_id),
-    new_route:   route.nodes,
-    improvement: route.improvement,
-    severity,
-    decided_at:  new Date().toISOString(),
+  // Construct the payload for the Routing Agent
+  // Based on RerouteInput in models.py
+  const payload = {
+    shipment_id: String(shipment_id),
+    current_node: "N2", // Mapping mocked since Execution Agent lacks graph nodes natively
+    destination_node: "N10",
+    current_route: ["N1", "N2", "N3", "N4"],
+    context: {
+      weather_risk: predictions?.delay_probability ?? 0.5,
+      congestion: 0.2,
+      disruption_flag: true
+    }
   };
 
-  console.log(
-    `[Router] Rerouted shipment ${decision.shipment_id} → ` +
-    `route=[${decision.new_route.join(" → ")}] ` +
-    `improvement=${decision.improvement}% severity=${severity}`
-  );
+  try {
+    const response = await fetch(ROUTING_AGENT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-  return decision;
+    if (!response.ok) {
+      const txt = await response.text();
+      throw new Error(`Routing agent error: ${response.status} ${txt}`);
+    }
+
+    const data = await response.json();
+    console.log(
+      `[Router] Rerouted shipment ${data.shipment_id} → ` +
+      `route=[${data.new_route.join(" → ")}] ` +
+      `improvement=${data.improvement}`
+    );
+
+    return {
+      action: data.action,
+      shipment_id: data.shipment_id,
+      new_route: data.new_route,
+      estimated_time: data.estimated_time,
+      improvement: data.improvement,
+      reason: data.reason
+    };
+  } catch (err) {
+    console.error(`[Router] Failed to reroute shipment ${shipment_id}: ${err.message}`);
+    throw err;
+  }
 }
-
-// ── Exports ───────────────────────────────────────────────────────────────────
 
 module.exports = { rerouteShipment };
